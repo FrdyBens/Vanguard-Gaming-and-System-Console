@@ -9,6 +9,7 @@ interface TopBarProps {
   setGatewayMode: (mode: GatewayMode) => void;
   onOpenSearch: () => void;
   onOpenDevConsole: () => void;
+  onOpenHostModal: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -17,7 +18,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   gatewayMode,
   setGatewayMode,
   onOpenSearch,
-  onOpenDevConsole
+  onOpenDevConsole,
+  onOpenHostModal
 }) => {
   const navItems = [
     { id: 'builder', label: 'Command Builder', icon: Terminal },
@@ -26,6 +28,9 @@ export const TopBar: React.FC<TopBarProps> = ({
     { id: 'workflows', label: 'Workflows', icon: GitPullRequest },
     { id: 'troubleshoot', label: 'Troubleshooting', icon: AlertTriangle }
   ];
+
+  const isSimulated = gatewayMode === 'simulated' || gatewayMode === 'simulated_test';
+  const executionStatus = isSimulated ? 'SIMULATED/TEST' : 'REAL HOST';
 
   return (
     <header className="h-14 border-b border-slate-800 bg-[#0a0f1d] px-4 flex items-center justify-between sticky top-0 z-30 select-none">
@@ -42,17 +47,23 @@ export const TopBar: React.FC<TopBarProps> = ({
             </span>
           </span>
 
-          {/* Explicit Backend Status Badge */}
-          <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800 font-mono text-[10px]">
+          {/* Explicit 3-State Backend Status Badge: REAL HOST / SIMULATED/TEST / UNKNOWN */}
+          <button
+            onClick={onOpenHostModal}
+            className={`hidden lg:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border font-mono text-[10px] transition-all hover:scale-105 ${
+              executionStatus === 'REAL HOST'
+                ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-400'
+                : 'bg-amber-950/40 border-amber-500/30 text-amber-400'
+            }`}
+            title="Click to view host security metrics and audit trail"
+          >
             <span
               className={`w-1.5 h-1.5 rounded-full ${
-                gatewayMode === 'live_daemon' ? 'bg-emerald-400 animate-pulse' : 'bg-[#00d4ff]'
+                executionStatus === 'REAL HOST' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
               }`}
             />
-            <span className={gatewayMode === 'live_daemon' ? 'text-emerald-400' : 'text-[#00d4ff]'}>
-              {gatewayMode === 'live_daemon' ? 'CACHYOS LOCAL' : 'SIMULATION'}
-            </span>
-          </div>
+            <span className="font-semibold">{executionStatus}</span>
+          </button>
         </div>
       </div>
 

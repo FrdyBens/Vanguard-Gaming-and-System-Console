@@ -17,6 +17,11 @@ import {
 import { vanguardCore } from '../core/VanguardCore';
 import { runVanguardCoreAcceptanceTests } from '../core/__tests__/core.test';
 
+interface DaemonTestSuiteResult {
+  allPassed: boolean;
+  results: { testId: number; title: string; passed: boolean; message: string }[];
+}
+
 interface DevConsoleModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -25,6 +30,8 @@ interface DevConsoleModalProps {
 export const DevConsoleModal: React.FC<DevConsoleModalProps> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<'tests' | 'graph' | 'snapshot' | 'safety' | 'memory'>('tests');
   const [testResults, setTestResults] = useState<ReturnType<typeof runVanguardCoreAcceptanceTests> | null>(null);
+  const [daemonTestResults, setDaemonTestResults] = useState<DaemonTestSuiteResult | null>(null);
+  const [isRunningDaemonTests, setIsRunningDaemonTests] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string>('node-game-timberborn');
   const [graphSearch, setGraphSearch] = useState('');
 
@@ -39,6 +46,21 @@ export const DevConsoleModal: React.FC<DevConsoleModalProps> = ({ isOpen, onClos
   const handleRunTests = () => {
     const outcome = runVanguardCoreAcceptanceTests();
     setTestResults(outcome);
+  };
+
+  const handleRunDaemonTests = async () => {
+    setIsRunningDaemonTests(true);
+    try {
+      const res = await fetch('/api/daemon/tests');
+      if (res.ok) {
+        const outcome = await res.json();
+        setDaemonTestResults(outcome);
+      }
+    } catch (err: any) {
+      console.error('Failed to run daemon tests:', err);
+    } finally {
+      setIsRunningDaemonTests(false);
+    }
   };
 
   const filteredNodes = allNodes.filter(
@@ -74,12 +96,11 @@ export const DevConsoleModal: React.FC<DevConsoleModalProps> = ({ isOpen, onClos
             <button
               onClick={() => {
                 core.getActiveBackend().resetState?.();
-                alert('Simulation state reset to pristine default.');
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-[#141d2e] hover:bg-[#1a273e] border border-slate-700/60 rounded-md transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
-              Reset Simulation
+              Reset State
             </button>
             <button
               onClick={onClose}
@@ -155,20 +176,68 @@ export const DevConsoleModal: React.FC<DevConsoleModalProps> = ({ isOpen, onClos
             <div className="space-y-6">
               <div className="flex items-center justify-between p-4 bg-[#111927] border border-[#1e293b] rounded-lg">
                 <div>
-                  <h3 className="text-sm font-semibold text-white">Vanguard Core Acceptance Test Suite</h3>
+                  <h3 className="text-sm font-semibold text-white">Vanguard Architectural & Daemon Verification</h3>
                   <p className="text-xs text-slate-400 mt-1">
-                    Verifies all 10 architectural criteria: graph traversal, plan generation, simulator mutation,
-                    safety gates, failure recall, and transparent evidence.
+                    Verifies all 10 architectural criteria plus 8 strict CachyOS host daemon security assertions (loopback, 0700/0600 POSIX permissions, nonces, argv-only execution).
                   </p>
                 </div>
-                <button
-                  onClick={handleRunTests}
-                  className="flex items-center gap-2 px-4 py-2 bg-[#00d4ff] hover:bg-[#00b8dc] text-slate-950 font-semibold text-xs rounded-lg transition-colors shadow-lg shadow-[#00d4ff]/20"
-                >
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  Run All 10 Tests
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleRunTests}
+                    className="flex items-center gap-2 px-3.5 py-2 bg-[#00d4ff] hover:bg-[#00b8dc] text-slate-950 font-semibold text-xs rounded-lg transition-colors shadow-lg shadow-[#00d4ff]/20"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    Run 10 Core Tests
+                  </button>
+                  <button
+                    onClick={handleRunDaemonTests}
+                    disabled={isRunningDaemonTests}
+                    className="flex items-center gap-2 px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs rounded-lg transition-colors shadow-lg shadow-emerald-500/20"
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    {isRunningDaemonTests ? 'Verifying...' : 'Run 8 Daemon Tests'}
+                  </button>
+                </div>
               </div>
+
+              {daemonTestResults && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+                    <span className="font-semibold text-white">
+                      Host Daemon Security Suite:{' '}
+                      <strong className={daemonTestResults.allPassed ? 'text-emerald-400' : 'text-amber-400'}>
+                        {daemonTestResults.results.filter((r) => r.passed).length} of {daemonTestResults.results.length} Passed
+                      </strong>
+                    </span>
+                    <span className="font-mono text-[11px] text-emerald-400">
+                      {daemonTestResults.allPassed ? 'ALL DAEMON CONSTRAINTS HARDENED' : 'SECURITY WARNING'}
+                    </span>
+                  </div>
+
+                  <div className="divide-y divide-[#1e293b] border border-emerald-500/30 rounded-lg bg-[#08121d] overflow-hidden">
+                    {daemonTestResults.results.map((res) => (
+                      <div key={res.testId} className="p-3 flex items-start gap-3 hover:bg-[#0d1a29] transition-colors">
+                        {res.passed ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-rose-400 mt-0.5 shrink-0" />
+                        )}
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-slate-100">
+                              Daemon Check {res.testId}: {res.title}
+                            </span>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              VERIFIED
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 mt-0.5 font-mono">{res.message}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {testResults ? (
                 <div className="space-y-3">

@@ -256,4 +256,23 @@ export interface TroubleshootingEntry {
   cachySpecificNote?: string;
 }
 
-export type GatewayMode = 'simulated' | 'live_daemon';
+export type GatewayMode = 'simulated' | 'live_daemon' | 'real_host' | 'simulated_test' | 'unknown';
+export type HostExecutionStatus = 'REAL HOST' | 'SIMULATED/TEST' | 'UNKNOWN';
+
+export interface DaemonAuditRecord {
+  timestamp: string;
+  requestId: string;
+  operation: string;
+  actor: string;
+  riskLevel: 'READ_ONLY' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  target?: string;
+  parameters?: Record<string, any>;
+  success: boolean;
+  exitCode: number;
+  verification?: {
+    verified: boolean;
+    method?: string;
+    message?: string;
+  };
+  durationMs: number;
+}

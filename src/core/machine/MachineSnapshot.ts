@@ -86,7 +86,7 @@ export interface MachineSnapshot {
   snapshotId: string;
   timestamp: number;
   confidence: NodeConfidence;
-  source: 'simulator' | 'local_agent' | 'remote_host';
+  source: 'simulator' | 'local_agent' | 'remote_host' | 'real_host';
   os: OSInfo;
   cpu: CPUInfo;
   gpu: GPUInfo;
@@ -96,7 +96,7 @@ export interface MachineSnapshot {
   };
   gaming: GamingStackInfo;
   services: ServiceSnapshot[];
-  permissions: {
+  permissions?: {
     user: string;
     uid: number;
     groups: string[];

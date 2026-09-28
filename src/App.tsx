@@ -85,6 +85,14 @@ export default function App() {
     }
   };
 
+  React.useEffect(() => {
+    vanguardCore.initHostConnection().then((connected) => {
+      if (connected) {
+        setGatewayMode('live_daemon');
+      }
+    });
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#070a12] text-slate-100 flex flex-col font-sans select-none">
       {/* Top Bar with Single Wordmark, Backend Badge, Navigation and Core Console Trigger */}
@@ -95,6 +103,7 @@ export default function App() {
         setGatewayMode={handleModeChange}
         onOpenSearch={() => setIsSearchOpen(true)}
         onOpenDevConsole={() => setDevConsoleOpen(true)}
+        onOpenHostModal={() => setDaemonModalOpen(true)}
       />
 
       {/* Main View Router */}

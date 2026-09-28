@@ -178,8 +178,40 @@ export class CachyStateManager {
   private blockDevices = [...INITIAL_BLOCK_DEVICES];
   private fileSystem = [...INITIAL_FILES];
   private executionHistory = [...INITIAL_EXECUTION_HISTORY];
-  private gatewayMode: GatewayMode = 'simulated';
-  private daemonUrl = 'http://localhost:9090';
+  private gatewayMode: GatewayMode = 'live_daemon';
+  private daemonUrl = 'http://127.0.0.1:9090';
+
+  public syncWithRealSnapshot(snapshot: any) {
+    if (!snapshot) return;
+    this.telemetry = {
+      kernel: snapshot.os?.kernel || this.telemetry.kernel,
+      architecture: snapshot.os?.architecture || this.telemetry.architecture,
+      cpu: snapshot.cpu?.model || this.telemetry.cpu,
+      gpu: snapshot.gpu?.model || this.telemetry.gpu,
+      driver: snapshot.gpu?.driver || this.telemetry.driver,
+      vulkanVersion: snapshot.gpu?.vulkanVersion || this.telemetry.vulkanVersion,
+      uptime: `${Math.floor((snapshot.os?.uptimeSeconds || 3600) / 3600)} hours`,
+      memoryUsedGb: parseFloat(((snapshot.memory?.usedBytes || 0) / (1024 * 1024 * 1024)).toFixed(1)),
+      memoryTotalGb: parseFloat(((snapshot.memory?.totalBytes || 0) / (1024 * 1024 * 1024)).toFixed(1)),
+      activeWineVersion: snapshot.gaming?.wineVersions?.[0]?.name || this.telemetry.activeWineVersion,
+      activeProtonVersion: snapshot.gaming?.protonVersions?.[0]?.name || this.telemetry.activeProtonVersion
+    };
+
+    if (snapshot.storage?.devices && snapshot.storage.devices.length > 0) {
+      this.blockDevices = snapshot.storage.devices.map((d: any) => ({
+        name: d.name,
+        path: d.path,
+        size: d.displaySize || 'Unknown',
+        fsType: d.fsType || 'ext4',
+        label: d.label || d.name,
+        uuid: d.uuid || 'N/A',
+        mountPoint: d.mountPoint || '',
+        isMounted: Boolean(d.isMounted),
+        isReadOnly: Boolean(d.isReadOnly),
+        model: d.model || 'Disk'
+      }));
+    }
+  }
 
   public getTelemetry(): SystemTelemetry {
     return this.telemetry;

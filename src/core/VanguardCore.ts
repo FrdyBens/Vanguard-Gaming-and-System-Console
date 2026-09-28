@@ -44,10 +44,27 @@ export class VanguardCore {
     this.snapshot = MachineDiscovery.createDefaultSnapshot();
     MachineDiscovery.populateGraph(this.graph, this.snapshot);
 
-    // 2. Initialize backends
+    // 2. Initialize backends - Default to REAL HOST backend
     this.simulationBackend = new SimulationBackend(this.stateManager, this.graph);
     this.localHostBackend = new LocalHostBackend(this.stateManager.getDaemonUrl());
-    this.activeBackend = this.simulationBackend;
+    this.activeBackend = this.localHostBackend;
+    this.stateManager.setGatewayMode('live_daemon');
+
+    // Asynchronously probe and refresh real host on launch
+    this.initHostConnection();
+  }
+
+  public async initHostConnection(): Promise<boolean> {
+    try {
+      const health = await this.localHostBackend.checkHealth();
+      if (health.online) {
+        await this.refreshSnapshot();
+        return true;
+      }
+    } catch {
+      // Daemon might not be ready yet
+    }
+    return false;
   }
 
   public static getInstance(): VanguardCore {
@@ -59,6 +76,20 @@ export class VanguardCore {
 
   public getActiveBackend(): VanguardBackend {
     return this.activeBackend;
+  }
+
+  public getLocalHostBackend(): LocalHostBackend {
+    return this.localHostBackend;
+  }
+
+  public getHostExecutionStatus(): 'REAL HOST' | 'SIMULATED/TEST' | 'UNKNOWN' {
+    if (this.activeBackend.type === 'simulation') {
+      return 'SIMULATED/TEST';
+    }
+    if (this.localHostBackend.isConnected) {
+      return 'REAL HOST';
+    }
+    return 'UNKNOWN';
   }
 
   public setBackend(type: BackendType, daemonUrl?: string): void {
@@ -151,10 +182,10 @@ export class VanguardCore {
           operationType: step.operationType,
           command: step.command,
           target: step.target,
-          arguments: step.arguments,
-          workingDir: '/home/cachy',
+          arguments: step.arguments || {},
+          workingDir: (this.snapshot as any).os?.homedir || '/home/cachy',
           backend: this.activeBackend.type,
-          user: 'cachy',
+          user: (this.snapshot as any).os?.user || 'cachy',
           objects: plan.targetObjects,
           exitCode: step.result.exitCode,
           status: step.result.exitCode === 0 ? 'success' : 'failed',
@@ -228,6 +259,7 @@ export class VanguardCore {
   public async refreshSnapshot(): Promise<MachineSnapshot> {
     this.snapshot = await this.activeBackend.discoverMachine();
     MachineDiscovery.populateGraph(this.graph, this.snapshot);
+    this.stateManager.syncWithRealSnapshot(this.snapshot);
     return this.snapshot;
   }
 }
