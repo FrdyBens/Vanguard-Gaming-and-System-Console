@@ -1,5 +1,5 @@
 import React from 'react';
-import { Terminal, HardDrive, Gamepad2, GitPullRequest, AlertTriangle, Layers, Server, Search } from 'lucide-react';
+import { Terminal, HardDrive, Gamepad2, GitPullRequest, AlertTriangle, Cpu, Search } from 'lucide-react';
 import { GatewayMode } from '../types';
 
 interface TopBarProps {
@@ -8,6 +8,7 @@ interface TopBarProps {
   gatewayMode: GatewayMode;
   setGatewayMode: (mode: GatewayMode) => void;
   onOpenSearch: () => void;
+  onOpenDevConsole: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -15,7 +16,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   setActiveView,
   gatewayMode,
   setGatewayMode,
-  onOpenSearch
+  onOpenSearch,
+  onOpenDevConsole
 }) => {
   const navItems = [
     { id: 'builder', label: 'Command Builder', icon: Terminal },
@@ -27,18 +29,30 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   return (
     <header className="h-14 border-b border-slate-800 bg-[#0a0f1d] px-4 flex items-center justify-between sticky top-0 z-30 select-none">
-      {/* Zone 1: Single text element wordmark */}
+      {/* Zone 1: Single text element wordmark with active backend badge */}
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded bg-[#00d4ff]/10 border border-[#00d4ff]/30 flex items-center justify-center text-[#00d4ff] font-mono font-bold text-base shadow-[0_0_12px_rgba(0,212,255,0.25)]">
           V
         </div>
-        <div className="flex flex-col">
+        <div className="flex items-center gap-2">
           <span className="font-bold text-sm tracking-tight text-white flex items-center gap-2">
             Vanguard
             <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#00d4ff] bg-[#00d4ff]/10 px-1.5 py-0.5 rounded border border-[#00d4ff]/20">
               CachyOS
             </span>
           </span>
+
+          {/* Explicit Backend Status Badge */}
+          <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800 font-mono text-[10px]">
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                gatewayMode === 'live_daemon' ? 'bg-emerald-400 animate-pulse' : 'bg-[#00d4ff]'
+              }`}
+            />
+            <span className={gatewayMode === 'live_daemon' ? 'text-emerald-400' : 'text-[#00d4ff]'}>
+              {gatewayMode === 'live_daemon' ? 'CACHYOS LOCAL' : 'SIMULATION'}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -64,7 +78,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         })}
       </nav>
 
-      {/* Zone 3: Actions & Search Trigger */}
+      {/* Zone 3: Actions, Search Trigger, Core Console & Mode Switcher */}
       <div className="flex items-center gap-2">
         <button
           onClick={onOpenSearch}
@@ -78,6 +92,17 @@ export const TopBar: React.FC<TopBarProps> = ({
           </kbd>
         </button>
 
+        {/* Core Architecture Console trigger */}
+        <button
+          onClick={onOpenDevConsole}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#111927] hover:bg-[#192437] border border-[#00d4ff]/30 text-[#00d4ff] hover:text-white text-xs font-medium transition-colors"
+          title="Inspect Object Graph, Machine Snapshot & Run Acceptance Suite"
+        >
+          <Cpu className="w-3.5 h-3.5" />
+          <span className="hidden xl:inline">Core Console</span>
+        </button>
+
+        {/* Backend mode toggle */}
         <div className="flex items-center bg-[#070a12] p-0.5 rounded-lg border border-slate-800 text-xs">
           <button
             onClick={() => setGatewayMode('simulated')}
@@ -87,7 +112,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            CachyOS Simulated
+            Simulated
           </button>
           <button
             onClick={() => setGatewayMode('live_daemon')}

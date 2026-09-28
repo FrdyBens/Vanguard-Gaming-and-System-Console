@@ -9,8 +9,10 @@ import { UniversalContextCard } from './components/UniversalContextCard';
 import { ExecutionGateway } from './components/ExecutionGateway';
 import { OmniSearch } from './components/OmniSearch';
 import { HostDaemonModal } from './components/HostDaemonModal';
+import { DevConsoleModal } from './components/DevConsoleModal';
 import { UniversalContextObject, SafetyLevel, PrivilegeLevel, GatewayMode } from './types';
 import { cachyState } from './services/cachyState';
+import { vanguardCore } from './core/VanguardCore';
 
 export default function App() {
   const [activeView, setActiveView] = useState<'builder' | 'dualfs' | 'gaming' | 'workflows' | 'troubleshoot'>('builder');
@@ -19,6 +21,9 @@ export default function App() {
 
   // Search Modal
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Core Architecture Console Modal
+  const [devConsoleOpen, setDevConsoleOpen] = useState(false);
 
   // Gateway Modal
   const [gatewayOpen, setGatewayOpen] = useState(false);
@@ -64,20 +69,32 @@ export default function App() {
     if (mode === 'live_daemon') {
       setDaemonModalOpen(true);
     } else {
-      cachyState.setGatewayMode('simulated');
+      vanguardCore.setBackend('simulation');
       setGatewayMode('simulated');
+    }
+  };
+
+  const handleSelectObject = (targetPathOrId: string | UniversalContextObject) => {
+    if (typeof targetPathOrId === 'string') {
+      const resolved = vanguardCore.resolveContextObject(targetPathOrId);
+      setSelectedContextObject(resolved);
+    } else {
+      // Re-resolve via VanguardCore to attach graph relations and recommendations
+      const resolved = vanguardCore.resolveContextObject(targetPathOrId.path || targetPathOrId.label);
+      setSelectedContextObject(resolved);
     }
   };
 
   return (
     <div className="min-h-screen bg-[#070a12] text-slate-100 flex flex-col font-sans select-none">
-      {/* Top Bar with Single Wordmark and 3-Zone Contract */}
+      {/* Top Bar with Single Wordmark, Backend Badge, Navigation and Core Console Trigger */}
       <TopBar
         activeView={activeView}
         setActiveView={(v) => setActiveView(v as any)}
         gatewayMode={gatewayMode}
         setGatewayMode={handleModeChange}
         onOpenSearch={() => setIsSearchOpen(true)}
+        onOpenDevConsole={() => setDevConsoleOpen(true)}
       />
 
       {/* Main View Router */}
@@ -91,14 +108,14 @@ export default function App() {
 
         {activeView === 'dualfs' && (
           <DualFileSystem
-            onOpenContextCard={(obj) => setSelectedContextObject(obj)}
+            onOpenContextCard={handleSelectObject}
             onPrepareCommand={(cmd) => handleRunCommand(cmd, 'low_risk', 'none', false)}
           />
         )}
 
         {activeView === 'gaming' && (
           <GamingCockpit
-            onOpenContextCard={(obj) => setSelectedContextObject(obj)}
+            onOpenContextCard={handleSelectObject}
             onLaunchGame={(cmd) => handleRunCommand(cmd, 'low_risk', 'none', false)}
           />
         )}
@@ -141,7 +158,7 @@ export default function App() {
           setActiveCommandId(cmdId);
           setActiveView('builder');
         }}
-        onSelectContextObject={(obj) => setSelectedContextObject(obj)}
+        onSelectContextObject={handleSelectObject}
         onSelectWorkflow={() => setActiveView('workflows')}
       />
 
@@ -164,9 +181,16 @@ export default function App() {
         isOpen={daemonModalOpen}
         onClose={() => setDaemonModalOpen(false)}
         onConnected={() => {
+          vanguardCore.setBackend('cachyos_local', cachyState.getDaemonUrl());
           setGatewayMode('live_daemon');
           setDaemonModalOpen(false);
         }}
+      />
+
+      {/* Core Architecture & Acceptance Test Console Modal */}
+      <DevConsoleModal
+        isOpen={devConsoleOpen}
+        onClose={() => setDevConsoleOpen(false)}
       />
     </div>
   );
