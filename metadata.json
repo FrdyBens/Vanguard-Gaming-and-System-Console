@@ -1,0 +1,6 @@
+{
+  "name": "Vanguard Gaming and System Console",
+  "description": "Intelligent CachyOS/Linux command engine, dual-pane filesystem workspace, Wine/Proton/Steam gaming runtime gateway, and Universal Context Card system.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
